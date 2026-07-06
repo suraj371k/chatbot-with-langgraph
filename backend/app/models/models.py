@@ -1,10 +1,18 @@
 from sqlalchemy.orm import  Mapped, mapped_column, relationship 
-from sqlalchemy import String, func, ForeignKey , DateTime , Integer
+from sqlalchemy import String, func, ForeignKey , DateTime , Integer , Enum
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from datetime import datetime , timezone
 from typing import Optional
 from app.core.database import Base
+import enum
+
+class DocumentStatus(str, enum.Enum):
+    uploaded = "uploaded"
+    processing = "processing"
+    embedded = "embedded"
+    failed = "failed"
+
 
 class User(Base):
     __tablename__ = 'users'
@@ -19,6 +27,14 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+    
+    documents: Mapped[list["Document"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
+    token_usage: Mapped[list["TokenUsage"]] = relationship(back_populates="user" , cascade="all, delete-orphan")
+
 
 class Conversation(Base):
     __tablename__ = "conversations"
@@ -30,6 +46,23 @@ class Conversation(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id")) 
 
     user: Mapped["User"] = relationship(back_populates="conversations")
+    
+class Document(Base):
+    __tablename__ = "documents"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True) , primary_key=True , default=uuid.uuid4)
+    filename: Mapped[str] = mapped_column(String(100))
+    s3_key: Mapped[str] = mapped_column(String(500))         
+    content_type: Mapped[str] = mapped_column(String(100))    
+    status: Mapped[DocumentStatus] = mapped_column(
+        Enum(DocumentStatus), default=DocumentStatus.uploaded
+    )
+
+    created_at: Mapped[datetime] = mapped_column(insert_default=func.now())
+    
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id")) 
+    user: Mapped["User"] = relationship(back_populates="documents")
+
   
 
 class TokenUsage(Base):
@@ -41,3 +74,4 @@ class TokenUsage(Base):
     window_start: Mapped[datetime] = mapped_column(
     DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
 )
+    user: Mapped["User"] = relationship(back_populates="token_usage")

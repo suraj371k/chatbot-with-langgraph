@@ -13,5 +13,10 @@ class Settings(BaseSettings):
     secret_key: str = Field(validation_alias="SECRET_KEY")
     algorithm: str = Field(validation_alias="ALGORITHM")
     access_token_expiry_time: int = Field(default=10080, validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    bucket_access_key: str = Field(validation_alias="BUCKET_ACCESS_KEY")
+    bucket_secret_key: str = Field(validation_alias="BUCKET_SECRET_KEY")
+    bucket_endpoint: str = Field(validation_alias="BUCKET_ENDPOINT")
+    bucket_name: str = Field(validation_alias="BUCKET_NAME")
+    bucket_region: str = Field(validation_alias="BUCKET_REGION")
 
 settings = Settings()

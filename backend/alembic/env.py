@@ -4,11 +4,18 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 from app.core.config import settings
 from app.core.database import Base
-from app.models.models import User, Conversation 
+from app.models.models import User, Conversation, Document, TokenUsage
 
 config = context.config
 fileConfig(config.config_file_name)
 target_metadata = Base.metadata
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    # Ignore tables not managed by our SQLAlchemy models (e.g. pgvector's own tables)
+    if type_ == "table" and name in ("store", "store_vectors"):
+        return False
+    return True
 
 
 def run_migrations_offline():
@@ -17,13 +24,18 @@ def run_migrations_offline():
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
     with context.begin_transaction():
         context.run_migrations()
 
