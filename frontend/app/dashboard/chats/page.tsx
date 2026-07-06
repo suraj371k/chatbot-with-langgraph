@@ -15,7 +15,7 @@ import {
 import toast from "react-hot-toast";
 
 import { useChatStore } from "@/store/chatStore";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -23,6 +23,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function formatRelativeTime(iso: string): string {
   const date = new Date(iso);
@@ -42,6 +52,150 @@ function formatRelativeTime(iso: string): string {
     day: "numeric",
     year: diffDay > 365 ? "numeric" : undefined,
   });
+}
+
+interface ChatSummary {
+  conversation_id: string;
+  name: string | null;
+  created_at: string;
+}
+
+interface ChatRowProps {
+  chat: ChatSummary;
+  index: number;
+}
+
+function ChatRow({ chat, index }: ChatRowProps) {
+  const { deleteConversation, renameConversation } = useChatStore();
+
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(chat.name ?? "");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const title = chat.name?.trim() || "New chat";
+  const href = `/dashboard/chat/${chat.conversation_id}`;
+
+  const startRename = (e: Event) => {
+    e.preventDefault();
+    setDraftTitle(chat.name ?? "");
+    setIsRenaming(true);
+  };
+
+  const commitRename = async () => {
+    const trimmed = draftTitle.trim();
+    setIsRenaming(false);
+    if (!trimmed || trimmed === (chat.name ?? "").trim()) return;
+
+    const ok = await renameConversation(chat.conversation_id, trimmed);
+    if (ok) toast.success("Chat renamed");
+    else toast.error("Couldn't rename chat");
+  };
+
+  const confirmDelete = async () => {
+    setDeleteOpen(false);
+    setBusy(true);
+    const ok = await deleteConversation(chat.conversation_id);
+    setBusy(false);
+
+    if (ok) toast.success("Chat deleted");
+    else toast.error("Couldn't delete chat");
+  };
+
+  if (isRenaming) {
+    return (
+      <div className="px-4 py-2.5">
+        <input
+          autoFocus
+          value={draftTitle}
+          onChange={(e) => setDraftTitle(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitRename();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setIsRenaming(false);
+            }
+          }}
+          className="h-9 w-full rounded-lg border border-ring bg-background px-3 text-sm text-foreground outline-none"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18, delay: Math.min(index, 8) * 0.02 }}
+    >
+      <Link
+        href={href}
+        aria-disabled={busy}
+        className="group flex items-center justify-between gap-3 rounded-xl border border-transparent px-4 py-3.5 transition hover:border-border hover:bg-accent/60 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">{title}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {formatRelativeTime(chat.created_at)}
+          </p>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              onClick={(e) => e.preventDefault()}
+              aria-label={`More options for ${title}`}
+              className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100 data-[state=open]:bg-accent data-[state=open]:opacity-100"
+            >
+              <Ellipsis size={16} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onSelect={startRename}>
+              <Pencil className="size-4" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={(e) => {
+                e.preventDefault();
+                setDeleteOpen(true);
+              }}
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </Link>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete &ldquo;{title}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this conversation and its messages.
+              This action can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className={buttonVariants({ variant: "destructive" })}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </motion.div>
+  );
 }
 
 const ChatsPage = () => {
@@ -67,18 +221,6 @@ const ChatsPage = () => {
       ),
     [filtered]
   );
-
-  const handleRename = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toast("Renaming chats is coming soon");
-  };
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toast("Deleting chats is coming soon");
-  };
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-10">
@@ -143,48 +285,7 @@ const ChatsPage = () => {
       ) : (
         <div className="flex flex-col gap-1.5">
           {sorted.map((chat, i) => (
-            <motion.div
-              key={chat.conversation_id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.18, delay: Math.min(i, 8) * 0.02 }}
-            >
-              <Link
-                href={`/dashboard/chat/${chat.conversation_id}`}
-                className="group flex items-center justify-between gap-3 rounded-xl border border-transparent px-4 py-3.5 transition hover:border-border hover:bg-accent/60"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {chat.name?.trim() || "New chat"}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {formatRelativeTime(chat.created_at)}
-                  </p>
-                </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      onClick={(e) => e.preventDefault()}
-                      aria-label={`More options for ${chat.name ?? "chat"}`}
-                      className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100 data-[state=open]:bg-accent data-[state=open]:opacity-100"
-                    >
-                      <Ellipsis size={16} />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem onClick={handleRename}>
-                      <Pencil className="size-4" />
-                      Rename
-                    </DropdownMenuItem>
-                    <DropdownMenuItem variant="destructive" onClick={handleDelete}>
-                      <Trash2 className="size-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </Link>
-            </motion.div>
+            <ChatRow key={chat.conversation_id} chat={chat} index={i} />
           ))}
         </div>
       )}

@@ -17,6 +17,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { buttonVariants } from "@/components/ui/button";
 import { useChatStore } from "@/store/chatStore";
 
 interface ChatsProps {
@@ -31,15 +42,15 @@ const Chats = ({ conversationId, name }: ChatsProps) => {
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState(name ?? "");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const href = `/dashboard/chat/${conversationId}`;
   const isActive = pathname === href;
   const title = name?.trim() || "New chat";
 
-  const startRename = (e: React.MouseEvent) => {
+  const startRename = (e: Event) => {
     e.preventDefault();
-    e.stopPropagation();
     setDraftTitle(name ?? "");
     setIsRenaming(true);
   };
@@ -54,11 +65,8 @@ const Chats = ({ conversationId, name }: ChatsProps) => {
     else toast.error("Couldn't rename chat");
   };
 
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return;
-
+  const confirmDelete = async () => {
+    setDeleteOpen(false);
     setBusy(true);
     const ok = await deleteConversation(conversationId);
     setBusy(false);
@@ -115,16 +123,43 @@ const Chats = ({ conversationId, name }: ChatsProps) => {
           </SidebarMenuAction>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" align="start" className="w-40">
-          <DropdownMenuItem onClick={startRename}>
+          <DropdownMenuItem onSelect={startRename}>
             <Pencil className="size-4" />
             Rename
           </DropdownMenuItem>
-          <DropdownMenuItem variant="destructive" onClick={handleDelete}>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={(e) => {
+              e.preventDefault();
+              setDeleteOpen(true);
+            }}
+          >
             <Trash2 className="size-4" />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete &ldquo;{title}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this conversation and its messages.
+              This action can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className={buttonVariants({ variant: "destructive" })}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarMenuItem>
   );
 };

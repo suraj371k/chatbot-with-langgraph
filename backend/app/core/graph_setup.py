@@ -17,7 +17,7 @@ async def init_graph():
 
     await _checkpointer.setup() 
 
-    # Long-term memory store (separate from the short-term checkpointer above)
+    # Long-term memory store 
     await init_store()
     memory_store = _store_module.store
 
