@@ -2,7 +2,11 @@ import pypdf
 import io
 from fastapi.concurrency import run_in_threadpool
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
+from app.core.pinecone import pc
+from app.core.config import settings
+from app.core.database import SessionLocal
+from sqlalchemy import update  
+from app.models.models import Document , DocumentStatus
 
 def _extract_text_sync(pdf_bytes: bytes) -> str:
     reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
@@ -51,6 +55,53 @@ async def process_document(pdf_bytes: bytes) -> list[str]:
     chunks = await split_text(text)          
     return chunks
 
-    # generate embedding
     
-    # store in vector database
+async def store_in_pinecone(user_id: str , document_id: str  , chunks: list[str]):
+    
+  
+    if not chunks:
+        raise ValueError("No chunks provided to store_in_pinecone.")
+
+    records = []
+    for i, chunk_text in enumerate(chunks):
+        records.append({
+            "_id": f"{document_id}#chunk{i}",
+            "text": chunk_text,
+            "document_id": document_id,
+            "chunk_index": i
+        })
+    
+    index = pc.Index(host=settings.pinecone_host)
+    index.upsert_records(
+        records=records,
+        namespace=user_id
+    )
+    print("Successfully uploaded chunks to Pinecone!")
+
+
+async def background_pinecone_indexing(user_id: str, document_id: str, chunks: list[str]):
+    async with SessionLocal() as db:  
+        try:
+            await db.execute(
+                update(Document).where(Document.id == document_id).values(status=DocumentStatus.processing)
+            )
+            await db.commit()
+
+            await store_in_pinecone(user_id=user_id, document_id=str(document_id), chunks=chunks)
+
+            await db.execute(
+                update(Document).where(Document.id == document_id).values(status=DocumentStatus.embedded)
+            )
+            await db.commit()
+
+        except Exception as e:
+            print(f"Failed to index document {document_id} in Pinecone: {e}")
+            await db.rollback()
+            try:
+                await db.execute(
+                    update(Document).where(Document.id == document_id).values(status=DocumentStatus.failed)
+                )
+                await db.commit()
+            except Exception as db_err:
+                print(f"Failed to write failed status to DB: {db_err}")
+

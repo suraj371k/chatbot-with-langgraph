@@ -18,5 +18,10 @@ class Settings(BaseSettings):
     bucket_endpoint: str = Field(validation_alias="BUCKET_ENDPOINT")
     bucket_name: str = Field(validation_alias="BUCKET_NAME")
     bucket_region: str = Field(validation_alias="BUCKET_REGION")
+    pinecone_key: str = Field(validation_alias="PINECONE_API_KEY")
+    pinecone_index_name: str = Field(validation_alias="PINECONE_INDEX_NAME")
+    pinecone_region: str = Field(validation_alias="PINECONE_REGION")
+    pinecone_cloud: str = Field(validation_alias='PINECONE_CLOUD')
+    pinecone_host: str = Field(validation_alias="PINECONE_HOST")
 
 settings = Settings()
