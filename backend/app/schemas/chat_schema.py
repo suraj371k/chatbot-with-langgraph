@@ -6,7 +6,8 @@ from datetime import datetime
 
 class ChatInput(BaseModel):
     question: str
-    conversation_id: UUID | None = None 
+    conversation_id: UUID | None = None
+    document_ids: list[UUID] | None = None
 
 
 class ChatMessage(BaseModel):

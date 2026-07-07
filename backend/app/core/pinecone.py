@@ -12,3 +12,6 @@ if not pc.has_index(settings.pinecone_index_name):
         embed={
         "model":"llama-text-embed-v2"
     })
+
+
+index = pc.Index(host=settings.pinecone_host)

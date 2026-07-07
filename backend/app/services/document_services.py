@@ -1,12 +1,22 @@
 import pypdf
 import io
+import re
 from fastapi.concurrency import run_in_threadpool
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from app.core.pinecone import pc
-from app.core.config import settings
+from app.core.pinecone import index
 from app.core.database import SessionLocal
 from sqlalchemy import update  
 from app.models.models import Document , DocumentStatus
+
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def sanitize_text(text: str) -> str:
+    """Strip null bytes / control characters that break Postgres JSON storage."""
+    if not text:
+        return text
+    return _CONTROL_CHARS_RE.sub("", text)
+
 
 def _extract_text_sync(pdf_bytes: bytes) -> str:
     reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
@@ -26,6 +36,8 @@ def _extract_text_sync(pdf_bytes: bytes) -> str:
         text = page.extract_text()
         if text and text.strip():
             full_text += text + "\n"
+
+    full_text = sanitize_text(full_text)
 
     if not full_text.strip():
         raise ValueError(
@@ -71,7 +83,6 @@ async def store_in_pinecone(user_id: str , document_id: str  , chunks: list[str]
             "chunk_index": i
         })
     
-    index = pc.Index(host=settings.pinecone_host)
     index.upsert_records(
         records=records,
         namespace=user_id
@@ -105,3 +116,19 @@ async def background_pinecone_indexing(user_id: str, document_id: str, chunks: l
             except Exception as db_err:
                 print(f"Failed to write failed status to DB: {db_err}")
 
+
+async def search_in_pinecone(user_id: str, question: str, document_ids: list[str], top_k: int = 5):
+    if not question or not question.strip():
+        raise ValueError("Question must not be empty.")
+    if not document_ids:
+        raise ValueError("document_ids must not be empty.")
+
+    return await run_in_threadpool(
+        index.search,
+        namespace=user_id,
+        query={
+            "inputs": {"text": question},
+            "top_k": top_k,
+            "filter": {"document_id": {"$in": document_ids}}
+        }
+    )

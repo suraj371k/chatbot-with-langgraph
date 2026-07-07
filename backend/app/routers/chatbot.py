@@ -7,7 +7,7 @@ from app.dependencies.get_user import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select , delete , update
-from app.models.models import Conversation , TokenUsage
+from app.models.models import Conversation , TokenUsage, Document, DocumentStatus
 from app.dependencies.token_limit import enforce_token_limit
 from app.utils.token_limit import record_tokens
 import uuid
@@ -40,13 +40,29 @@ async def ask_question(
         conversation_id = conversation.id
 
     config = {"configurable": {"thread_id": str(conversation_id), "user_id": str(current_user.id)}}
-    user_id = current_user.id 
+    user_id = current_user.id
+
+    verified_document_ids: list[str] = []
+    if payload.document_ids:
+        result = await db.execute(
+            select(Document.id).where(
+                Document.id.in_(payload.document_ids),
+                Document.user_id == current_user.id,
+                Document.status == DocumentStatus.embedded,
+            )
+        )
+        verified_document_ids = [str(row) for row in result.scalars().all()]
+
+    initial_state = {"messages": [HumanMessage(content=payload.question)]}
+    if verified_document_ids:
+        initial_state["document_ids"] = verified_document_ids
+
     async def event_generator():
         full_response = ""
 
         try:
             async for event in graph_setup.graph.astream(
-                {"messages": [HumanMessage(content=payload.question)]},
+                initial_state,
                 config=config,
                 stream_mode="messages",
                 version="v2",
