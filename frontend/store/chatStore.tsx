@@ -17,6 +17,7 @@ interface ChatState {
   messages: ChatMessage[];
   chats: ConversationSummary[];
   conversationId: string | null;
+  documentsIds: string[] | null;
   sending: boolean;
   streamingMessageId: string | null;
   historyLoading: boolean;
@@ -24,6 +25,7 @@ interface ChatState {
   resolvingConversation: boolean;
   error: string | null;
 
+  setDocumentsIds: (ids: string[]) => void;
   setConversationId: (id: string | null) => void;
   resetConversation: () => void;
   fetchChats: () => Promise<void>;
@@ -31,7 +33,10 @@ interface ChatState {
   sendMessage: (question: string) => Promise<void>;
   stopGenerating: () => void;
   deleteConversation: (conversationId: string) => Promise<boolean>;
-  renameConversation: (conversationId: string, title: string) => Promise<boolean>;
+  renameConversation: (
+    conversationId: string,
+    title: string,
+  ) => Promise<boolean>;
 }
 
 let activeAbortController: AbortController | null = null;
@@ -48,6 +53,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   chats: [],
   conversationId: null,
+  documentsIds: null,
   sending: false,
   streamingMessageId: null,
   historyLoading: false,
@@ -57,6 +63,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setConversationId: (id) => set({ conversationId: id }),
 
+  setDocumentsIds: (ids) => set({ documentsIds: ids }),
   resetConversation: () => {
     activeAbortController?.abort();
     activeAbortController = null;
@@ -135,6 +142,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         body: JSON.stringify({
           question: trimmed,
           conversation_id: get().conversationId ?? undefined,
+          document_ids: get().documentsIds ?? undefined,
         }),
         signal: controller.signal,
       });
@@ -184,12 +192,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } finally {
       activeAbortController = null;
 
-      // Keep `sending` true across the id-resolution step below so a fast
-      // second message can't slip through while conversationId is still
-      // null — that race used to make the backend create a second,
-      // orphaned conversation. `resolvingConversation` drives the input's
-      // disabled state separately from `sending` so the UI can still tell
-      // the two apart if needed later.
       if (isNewConversation) {
         set({ streamingMessageId: null, resolvingConversation: true });
         try {
@@ -217,22 +219,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
   deleteConversation: async (conversationId) => {
     const previousChats = get().chats;
 
-    // Optimistic removal so the row disappears instantly — rolled back
-    // below if the request actually fails.
-    set({ chats: previousChats.filter((c) => c.conversation_id !== conversationId) });
+    set({
+      chats: previousChats.filter((c) => c.conversation_id !== conversationId),
+    });
 
     try {
       await api.delete(`/api/chat/${conversationId}`);
 
-      // If the conversation being deleted is the one currently open,
-      // clear it out from under the chat window too.
       if (get().conversationId === conversationId) {
         get().resetConversation();
       }
       return true;
     } catch (err) {
       console.error("error deleting conversation:", err);
-      set({ chats: previousChats, error: "Couldn't delete this chat. Try again." });
+      set({
+        chats: previousChats,
+        error: "Couldn't delete this chat. Try again.",
+      });
       return false;
     }
   },
@@ -243,7 +246,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     const previousChats = get().chats;
 
-    // Optimistic rename, same rollback pattern as delete above.
     set({
       chats: previousChats.map((c) =>
         c.conversation_id === conversationId ? { ...c, name: trimmed } : c,
@@ -255,7 +257,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return true;
     } catch (err) {
       console.error("error renaming conversation:", err);
-      set({ chats: previousChats, error: "Couldn't rename this chat. Try again." });
+      set({
+        chats: previousChats,
+        error: "Couldn't rename this chat. Try again.",
+      });
       return false;
     }
   },

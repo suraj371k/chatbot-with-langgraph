@@ -51,11 +51,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (axios.isAxiosError(error)) {
         const message =
           error.response?.data?.detail ?? "Login failed. Please try again.";
-        console.error("error in login store:", message);
         set({ error: message, loading: false });
         throw new Error(message);
       } else {
-        console.error("unexpected error in login store:", error);
         set({ error: "Something went wrong.", loading: false });
         throw error;
       }

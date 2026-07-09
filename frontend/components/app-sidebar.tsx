@@ -1,6 +1,13 @@
 "use client";
 
-import { HistoryIcon, Home, LogOut, MessageCircle, Search } from "lucide-react";
+import {
+  File,
+  HistoryIcon,
+  Home,
+  LogOut,
+  MessageCircle,
+  Search,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +34,7 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "New Chat", url: "/dashboard/chat", icon: MessageCircle },
   { title: "Chats", url: "/dashboard/chats", icon: HistoryIcon },
+  { title: "documents", url: "/dashboard/docs", icon: File },
 ];
 
 export function AppSidebar() {

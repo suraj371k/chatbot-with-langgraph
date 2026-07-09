@@ -139,7 +139,9 @@ function ChatRow({ chat, index }: ChatRowProps) {
         className="group flex items-center justify-between gap-3 rounded-xl border border-transparent px-4 py-3.5 transition hover:border-border hover:bg-accent/60 aria-disabled:pointer-events-none aria-disabled:opacity-50"
       >
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{title}</p>
+          <p className="truncate text-sm font-medium text-foreground">
+            {title}
+          </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {formatRelativeTime(chat.created_at)}
           </p>
@@ -155,7 +157,11 @@ function ChatRow({ chat, index }: ChatRowProps) {
               <Ellipsis size={16} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuContent
+            onClick={(e) => e.stopPropagation()}
+            align="end"
+            className="w-40 "
+          >
             <DropdownMenuItem onSelect={startRename}>
               <Pencil className="size-4" />
               Rename
@@ -211,15 +217,18 @@ const ChatsPage = () => {
   const filtered = useMemo(() => {
     if (!query.trim()) return chats;
     const q = query.trim().toLowerCase();
-    return chats.filter((c) => (c.name ?? "New chat").toLowerCase().includes(q));
+    return chats.filter((c) =>
+      (c.name ?? "New chat").toLowerCase().includes(q),
+    );
   }, [chats, query]);
 
   const sorted = useMemo(
     () =>
       [...filtered].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       ),
-    [filtered]
+    [filtered],
   );
 
   return (
@@ -236,7 +245,10 @@ const ChatsPage = () => {
               : `${chats.length} conversation${chats.length === 1 ? "" : "s"}`}
           </p>
         </div>
-        <Button onClick={() => router.push("/dashboard/chat")} className="gap-1.5">
+        <Button
+          onClick={() => router.push("/dashboard/chat")}
+          className="gap-1.5"
+        >
           <MessageSquarePlus size={16} />
           New chat
         </Button>
@@ -259,7 +271,10 @@ const ChatsPage = () => {
       {chatsLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/60" />
+            <div
+              key={i}
+              className="h-16 animate-pulse rounded-xl bg-muted/60"
+            />
           ))}
         </div>
       ) : sorted.length === 0 ? (
@@ -269,7 +284,9 @@ const ChatsPage = () => {
             {query ? "No chats match your search" : "No chats yet"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {query ? "Try a different search term." : "Start a new conversation to see it here."}
+            {query
+              ? "Try a different search term."
+              : "Start a new conversation to see it here."}
           </p>
           {!query && (
             <Button
