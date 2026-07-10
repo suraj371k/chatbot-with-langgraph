@@ -31,7 +31,7 @@ app = FastAPI(
     title="Chatbot API",
     lifespan=lifespan,
 )
-
+ 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"], 
