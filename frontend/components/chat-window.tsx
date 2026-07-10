@@ -9,13 +9,19 @@ import {
   User as UserIcon,
   Plus,
   FileStack,
+  FileText,
+  UploadCloud,
+  Loader2,
+  Inbox,
   AlertCircle,
   Copy,
   Check,
 } from "lucide-react";
 import Markdown from "react-markdown";
+import toast from "react-hot-toast";
 
 import { useChatStore } from "@/store/chatStore";
+import { useDocStore } from "@/store/docStore";
 import {
   MessageScrollerProvider,
   MessageScroller,
@@ -31,7 +37,26 @@ import {
 } from "@/components/ui/message";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FileUploader } from "@/components/file-uploader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+
+const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx";
+const MAX_UPLOAD_SIZE_MB = 20;
 
 function useAutoResizeTextarea(
   ref: React.RefObject<HTMLTextAreaElement | null>,
@@ -45,9 +70,6 @@ function useAutoResizeTextarea(
   }, [ref, value]);
 }
 
-// Renders assistant/user markdown with real typography instead of raw,
-// unstyled tags — headings, lists, code, and links all fall back to plain
-// browser defaults without this.
 const markdownComponents = {
   p: ({ children }: { children?: React.ReactNode }) => (
     <p className="mb-3 leading-relaxed last:mb-0">{children}</p>
@@ -143,6 +165,7 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
     chats,
     fetchChats,
     documentsIds,
+    setDocumentsIds,
     messages,
     sending,
     streamingMessageId,
@@ -155,19 +178,26 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
     resetConversation,
   } = useChatStore();
 
+  const {
+    documents: allDocuments,
+    fetchDocuments,
+    uploadDocument,
+    uploading,
+    uploadProgress,
+  } = useDocStore();
+
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useAutoResizeTextarea(textareaRef, input);
 
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [attachFile, setAttachFile] = useState<File | null>(null);
+  const [selectOpen, setSelectOpen] = useState(false);
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     if (conversationId) {
-      // Skip the refetch if the store already reflects this exact
-      // conversation — this is the case right after a brand-new chat's
-      // first reply resolves its id and we get navigated here. Without
-      // this check, loadConversation wipes `messages` and re-fetches from
-      // the server, causing a visible flash back to "Loading…" right
-      // after the response you just watched stream in.
       if (useChatStore.getState().conversationId !== conversationId) {
         loadConversation(conversationId);
       }
@@ -182,6 +212,13 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
       router.replace(`/dashboard/chat/${activeConversationId}`);
     }
   }, [conversationId, activeConversationId, router]);
+
+  useEffect(() => {
+    if (selectOpen) {
+      setSelectedDocIds(new Set(documentsIds ?? []));
+      fetchDocuments();
+    }
+  }, [selectOpen, documentsIds, fetchDocuments]);
 
   const isBusy = sending || resolvingConversation;
 
@@ -215,14 +252,43 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-focus the composer once it's actually usable again, so sending a
-  // message or switching conversations doesn't leave the user stuck
-  // clicking back into the textarea.
   useEffect(() => {
     if (!isBusy && !historyLoading) {
       textareaRef.current?.focus();
     }
   }, [isBusy, historyLoading, conversationId]);
+
+  const handleAttachFileSelected = async (file: File) => {
+    setAttachFile(file);
+    const result = await uploadDocument(file);
+    if (result) {
+      toast.success(`"${file.name}" uploaded`);
+      setDocumentsIds([...(documentsIds ?? []), result.id]);
+      setAttachFile(null);
+      setUploadOpen(false);
+    } else {
+      toast.error("Failed to upload document");
+      setAttachFile(null);
+    }
+  };
+
+  const handleAttachClear = () => {
+    if (uploading) return;
+    setAttachFile(null);
+  };
+
+  const toggleDocSelection = (id: string) => {
+    setSelectedDocIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleConfirmSelection = () => {
+    setDocumentsIds(Array.from(selectedDocIds));
+    setSelectOpen(false);
+  };
 
   const activeId = conversationId ?? activeConversationId;
   const activeChat = chats.find((c) => c.conversation_id === activeId);
@@ -393,6 +459,27 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
       {/* Composer */}
       <div className="flex-none border-t border-border p-3">
         <div className="flex items-end gap-2 rounded-2xl border border-border bg-background px-3 py-2 transition-colors focus-within:border-ring">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="Attach documents"
+                className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <Plus size={16} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top">
+              <DropdownMenuItem onSelect={() => setUploadOpen(true)}>
+                <UploadCloud className="h-4 w-4" />
+                Upload file
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSelectOpen(true)}>
+                <FileStack className="h-4 w-4" />
+                Select documents
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <textarea
             ref={textareaRef}
             value={input}
@@ -425,6 +512,73 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
           Enter to send · Shift + Enter for a new line
         </p>
       </div>
+
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload a document</DialogTitle>
+            <DialogDescription>
+              The uploaded file will be added to this chat's document scope
+              automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <FileUploader
+            accept={ACCEPTED_FILE_TYPES}
+            maxSizeMB={MAX_UPLOAD_SIZE_MB}
+            file={attachFile}
+            onFileSelected={handleAttachFileSelected}
+            onClear={handleAttachClear}
+            uploading={uploading}
+            progress={uploadProgress}
+            label="Drag & drop a document, or click to browse"
+            helperText={`PDF, DOC, DOCX up to ${MAX_UPLOAD_SIZE_MB}MB`}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={selectOpen} onOpenChange={setSelectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select documents</DialogTitle>
+            <DialogDescription>
+              Choose which uploaded documents this chat should reference.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex max-h-80 flex-col gap-1 overflow-y-auto">
+            {allDocuments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+                <Inbox className="h-6 w-6 opacity-40" />
+                <p className="text-sm">No documents uploaded yet</p>
+              </div>
+            ) : (
+              allDocuments.map((doc) => (
+                <label
+                  key={doc.id}
+                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50"
+                >
+                  <Checkbox
+                    checked={selectedDocIds.has(doc.id)}
+                    onCheckedChange={() => toggleDocSelection(doc.id)}
+                  />
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate text-sm">{doc.filename}</span>
+                </label>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmSelection}>
+              Use {selectedDocIds.size > 0 ? selectedDocIds.size : ""} document
+              {selectedDocIds.size === 1 ? "" : "s"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

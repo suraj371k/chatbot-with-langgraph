@@ -65,7 +65,14 @@ const statusStyles: Record<string, string> = {
   failed: "bg-red-50 text-red-700 border-red-200",
 };
 
-const TOTAL_COLUMNS = 6;
+const TOTAL_COLUMNS = 7;
+
+function formatBytes(bytes: number) {
+  if (!bytes || bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
 
 // Keep in sync with the backend's ALLOWED_EXTENSIONS (app/routers/document.py)
 const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx";
@@ -279,6 +286,7 @@ const Documents = () => {
               </TableHead>
               <TableHead className="w-[35%]">Filename</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Size</TableHead>
               <TableHead>Uploaded</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right pr-6">Actions</TableHead>
@@ -297,6 +305,9 @@ const Documents = () => {
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-12" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-14" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-20" />
@@ -356,6 +367,12 @@ const Documents = () => {
                     <TableCell>
                       <span className="uppercase text-xs font-medium text-muted-foreground tracking-wide">
                         {doc.content_type.split("/").at(1)}
+                      </span>
+                    </TableCell>
+
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground tabular-nums">
+                        {formatBytes(doc.size)}
                       </span>
                     </TableCell>
 

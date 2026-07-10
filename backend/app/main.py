@@ -6,6 +6,7 @@ if sys.platform == "win32":
 
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.graph_setup import init_graph, close_graph
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,10 +32,14 @@ app = FastAPI(
     title="Chatbot API",
     lifespan=lifespan,
 )
- 
+
+# settings.frontend_url covers the deployed frontend; localhost:3000 stays
+# allowed too so local dev keeps working against a deployed backend.
+allowed_origins = {settings.frontend_url, "http://localhost:3000"}
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], 
+    allow_origins=list(allowed_origins),
     allow_credentials=True,
     allow_methods=["*"], 
     allow_headers=["*"],

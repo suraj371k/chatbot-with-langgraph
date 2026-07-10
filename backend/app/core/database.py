@@ -4,9 +4,11 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.core.config import settings
 from sqlalchemy.orm import DeclarativeBase
 
-ssl_context = ssl.create_default_context(
-    cafile=str(Path("C:/Users/suraj/.postgresql/root.crt"))
-)
+# Project root: app/core/database.py -> app/core -> app -> backend/
+BASE_DIR = Path(__file__).resolve().parents[2]
+CERT_PATH = BASE_DIR / "global-bundle.pem"
+
+ssl_context = ssl.create_default_context(cafile=str(CERT_PATH))
 
 engine = create_async_engine(
     settings.db_url,

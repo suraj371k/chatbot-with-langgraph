@@ -24,9 +24,6 @@ class Settings(BaseSettings):
     pinecone_cloud: str = Field(validation_alias='PINECONE_CLOUD')
     pinecone_host: str = Field(validation_alias="PINECONE_HOST")
 
-    # Defaults keep local dev working with zero .env changes. Set
-    # ENVIRONMENT=production and FRONTEND_URL=https://yourapp.com in your
-    # production environment (Render/Railway/Vercel/etc. env vars).
     environment: str = Field(default="development", validation_alias="ENVIRONMENT")
     frontend_url: str = Field(default="http://localhost:3000", validation_alias="FRONTEND_URL")
 
@@ -36,21 +33,10 @@ class Settings(BaseSettings):
 
     @property
     def cookie_secure(self) -> bool:
-        # Secure cookies are only ever sent over HTTPS. Must be True in
-        # production, and MUST pair with samesite="none" below or browsers
-        # reject the combination outright.
         return self.is_production
 
     @property
     def cookie_samesite(self) -> str:
-        # In production the frontend and API commonly live on different
-        # domains (e.g. a Vercel frontend + a Railway/Render backend),
-        # which requires SameSite=None (+ Secure) for the browser to send
-        # the cookie on cross-site requests at all. In local dev both run
-        # on localhost, where "lax" is simpler and doesn't require HTTPS.
-        # If you deploy frontend and backend on the same registrable domain
-        # (e.g. app.example.com + api.example.com) you can switch this back
-        # to "lax" for production too.
         return "none" if self.is_production else "lax"
 
 settings = Settings()
