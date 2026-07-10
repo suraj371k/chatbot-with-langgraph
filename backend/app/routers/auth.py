@@ -54,9 +54,9 @@ async def login(response:Response, data: LoginInput , db: AsyncSession = Depends
     response.set_cookie(
         key="token",
         value=token,
-        secure=False,
-        httponly=False,
-        samesite="lax",
+        secure=settings.cookie_secure,
+        httponly=True,
+        samesite=settings.cookie_samesite,
         path="/",
         max_age=int(token_expiry.total_seconds())
     )
@@ -65,5 +65,10 @@ async def login(response:Response, data: LoginInput , db: AsyncSession = Depends
 
 @router.post('/logout' , tags=["auth"])
 async def  logout(response: Response):
-    response.delete_cookie(key="token", path="/")
+    response.delete_cookie(
+        key="token",
+        path="/",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+    )
     return {"message": "Logged out successfully"}
