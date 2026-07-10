@@ -109,10 +109,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadConversation: async (conversationId) => {
-    // If a previous stream is still running (e.g. the user clicked a
-    // different conversation in the sidebar mid-response), cancel it and
-    // clear its state first — otherwise `sending`/`streamingMessageId`
-    // stay stuck "on" for a conversation that's no longer even showing.
     activeAbortController?.abort();
     activeAbortController = null;
 
@@ -199,7 +195,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
           const data = extractSSEData(rawEvent);
           if (data) {
-            let event: { type: string; content?: string; message?: string } | null = null;
+            let event: {
+              type: string;
+              content?: string;
+              message?: string;
+            } | null = null;
             try {
               event = JSON.parse(data);
             } catch {
