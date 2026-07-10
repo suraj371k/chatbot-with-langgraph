@@ -83,6 +83,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         const message =
           error?.response?.data.detail ?? "Logout failed. please try again.";
         console.error("error in logout store: ", message);
+        set({ loading: false });
         throw new Error(message);
       } else {
         console.error("unexpected error in logout store: ", error);
@@ -101,6 +102,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         const message =
           error?.response?.data.detail ?? "error in fetching profile";
         console.error("error in profile store: ", message);
+        set({ loading: false });
         throw new Error(message);
       } else {
         console.error("unexpected error in profile store: ", error);
