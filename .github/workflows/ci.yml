@@ -27,4 +27,4 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: your-dockerhub-username/backend:latest
+          tags: suraj371k/backend:latest
