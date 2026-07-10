@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     pinecone_host: str = Field(validation_alias="PINECONE_HOST")
 
     environment: str = Field(default="development", validation_alias="ENVIRONMENT")
-    frontend_url: str = Field(default="http://localhost:3000", validation_alias="FRONTEND_URL")
+    frontend_url: str = Field(validation_alias="FRONTEND_URL")
 
     @property
     def is_production(self) -> bool:
