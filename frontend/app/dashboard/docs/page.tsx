@@ -56,6 +56,7 @@ import toast from "react-hot-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
 import { useChatStore } from "@/store/chatStore";
+import isAuth from "@/utils/isAuth";
 
 const statusStyles: Record<string, string> = {
   uploaded: "bg-blue-50 text-blue-700 border-blue-200",
@@ -522,4 +523,4 @@ const Documents = () => {
   );
 };
 
-export default Documents;
+export default isAuth(Documents);

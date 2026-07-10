@@ -1,6 +1,7 @@
 "use client";
 
 import ChatWindow from "@/components/chat-window";
+import isAuth from "@/utils/isAuth";
 import React from "react";
 
 const Chat = () => {
@@ -11,4 +12,4 @@ const Chat = () => {
   );
 };
 
-export default Chat;
+export default isAuth(Chat);

@@ -14,6 +14,7 @@ import {
 } from "@/components/dashboard/recent-documents-card";
 import { RecentChatsCard } from "@/components/dashboard/recent-chats-card";
 import { MemoryHighlightsCard } from "@/components/dashboard/memory-highlights-card";
+import isAuth from "@/utils/isAuth";
 
 const RECENT_DOCUMENTS_LIMIT = 6;
 
@@ -76,4 +77,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default isAuth(Dashboard);

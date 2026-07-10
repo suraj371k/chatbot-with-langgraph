@@ -33,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import isAuth from "@/utils/isAuth";
 
 function formatRelativeTime(iso: string): string {
   const date = new Date(iso);
@@ -310,4 +311,4 @@ const ChatsPage = () => {
   );
 };
 
-export default ChatsPage;
+export default isAuth(ChatsPage);
