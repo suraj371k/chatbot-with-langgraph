@@ -1,4 +1,5 @@
 import asyncio
+import json
 from langchain_core.messages import HumanMessage
 from fastapi import APIRouter, Depends, HTTPException
 from app.schemas.chat_schema import ChatInput, ChatHistoryResponse, ChatResponse, ConversationListResponse, ConversationSummary, ChatMessage , UpdateTitleRequest
@@ -75,10 +76,19 @@ async def ask_question(
                     continue
 
                 full_response += message_chunk.content
-                yield f"data: {message_chunk.content}\n\n"
+                # JSON-encode the payload so embedded newlines (extremely common
+                # in code/lists/multi-paragraph output) become escaped \n
+                # characters instead of literal line breaks. A raw newline here
+                # would split this into multiple physical lines, and only the
+                # first would carry the required "data:" prefix per the SSE
+                # spec — every following line would be silently dropped by any
+                # client that filters for "data:"-prefixed lines.
+                sse_payload = json.dumps({"type": "chunk", "content": message_chunk.content})
+                yield f"data: {sse_payload}\n\n"
 
         except Exception as e:
-            yield f"data: Error: {str(e)}\n\n"
+            sse_payload = json.dumps({"type": "error", "message": str(e)})
+            yield f"data: {sse_payload}\n\n"
 
         finally:
             input_tokens = len(encoder.encode(payload.question))
@@ -102,7 +112,7 @@ async def ask_question(
                     extract_and_store_memory(payload.question, full_response, user_id)
                 )
 
-            yield "data: [DONE]\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(
         event_generator(),

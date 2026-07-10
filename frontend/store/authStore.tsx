@@ -7,22 +7,36 @@ interface UserResponse {
   id: string;
   name: string;
   email: string;
+  created_at: string;
+}
+
+export interface TokenUsage {
+  tokens_used: number;
+  limit: number;
+  remaining: number;
+  percentage_used: number;
+  reset_in_seconds: number;
 }
 
 interface AuthState {
   loading: boolean;
   error: string | null;
   user: UserResponse | null;
+  usage: TokenUsage | null;
+  usageLoading: boolean;
   signup: (data: SignupInput) => Promise<void>;
   login: (data: LoginInput) => Promise<void>;
   logout: () => Promise<void>;
   profile: () => Promise<void>;
+  fetchUsage: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   loading: false,
   error: null,
   user: null,
+  usage: null,
+  usageLoading: false,
   signup: async (data) => {
     set({ loading: true, error: null });
     try {
@@ -93,6 +107,17 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ error: "something went wrong", loading: false });
         throw error;
       }
+    }
+  },
+
+  fetchUsage: async () => {
+    set({ usageLoading: true });
+    try {
+      const res = await api.get<TokenUsage>("/api/user/usage");
+      set({ usage: res.data, usageLoading: false });
+    } catch (error) {
+      console.error("error fetching token usage:", error);
+      set({ usageLoading: false });
     }
   },
 }));

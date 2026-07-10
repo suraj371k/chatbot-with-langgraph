@@ -34,12 +34,14 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "New Chat", url: "/dashboard/chat", icon: MessageCircle },
   { title: "Chats", url: "/dashboard/chats", icon: HistoryIcon },
-  { title: "documents", url: "/dashboard/docs", icon: File },
+  { title: "Documents", url: "/dashboard/docs", icon: File },
 ];
+
+const SIDEBAR_CHATS_LIMIT = 7;
 
 export function AppSidebar() {
   const { open } = useSidebar();
-  const { logout, loading, user } = useAuthStore();
+  const { logout, user } = useAuthStore();
 
   const router = useRouter();
 
@@ -48,6 +50,13 @@ export function AppSidebar() {
   useEffect(() => {
     fetchChats();
   }, []);
+
+  const sortedChats = [...chats].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  const visibleChats = sortedChats.slice(0, SIDEBAR_CHATS_LIMIT);
+  const hasMoreChats = chats.length > SIDEBAR_CHATS_LIMIT;
 
   const handleLogout = async () => {
     try {
@@ -112,13 +121,25 @@ export function AppSidebar() {
               </div>
             ) : chats.length > 0 ? (
               <SidebarMenu>
-                {chats.map((chat) => (
+                {visibleChats.map((chat) => (
                   <Chats
                     key={chat.conversation_id}
                     conversationId={chat.conversation_id}
                     name={chat.name}
                   />
                 ))}
+                {hasMoreChats && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <a
+                        href="/dashboard/chats"
+                        className="text-xs text-sidebar-foreground/60"
+                      >
+                        <span>View all chats</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             ) : (
               <p className="px-2 py-1.5 text-xs text-sidebar-foreground/60">

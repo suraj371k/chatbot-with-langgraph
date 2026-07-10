@@ -13,9 +13,16 @@ interface ConversationSummary {
   created_at: string;
 }
 
+export interface Memory {
+  key: string;
+  fact: string;
+}
+
 interface ChatState {
   messages: ChatMessage[];
   chats: ConversationSummary[];
+  memories: Memory[];
+  memoriesLoading: boolean;
   conversationId: string | null;
   documentsIds: string[] | null;
   sending: boolean;
@@ -29,6 +36,7 @@ interface ChatState {
   setConversationId: (id: string | null) => void;
   resetConversation: () => void;
   fetchChats: () => Promise<void>;
+  fetchMemories: () => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
   sendMessage: (question: string) => Promise<void>;
   stopGenerating: () => void;
@@ -52,6 +60,8 @@ function extractSSEData(rawEvent: string): string {
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   chats: [],
+  memories: [],
+  memoriesLoading: false,
   conversationId: null,
   documentsIds: null,
   sending: false,
@@ -87,12 +97,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  fetchMemories: async () => {
+    set({ memoriesLoading: true });
+    try {
+      const res = await api.get("/api/chat/store");
+      set({ memories: res.data.memories ?? [], memoriesLoading: false });
+    } catch (err) {
+      console.error("error fetching memories:", err);
+      set({ memoriesLoading: false });
+    }
+  },
+
   loadConversation: async (conversationId) => {
+    // If a previous stream is still running (e.g. the user clicked a
+    // different conversation in the sidebar mid-response), cancel it and
+    // clear its state first — otherwise `sending`/`streamingMessageId`
+    // stay stuck "on" for a conversation that's no longer even showing.
+    activeAbortController?.abort();
+    activeAbortController = null;
+
     set({
       historyLoading: true,
       error: null,
       messages: [],
       conversationId,
+      sending: false,
+      streamingMessageId: null,
+      resolvingConversation: false,
     });
     try {
       const res = await api.get(`/api/chat/messages/${conversationId}`);
@@ -167,18 +198,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
           buffer = buffer.slice(boundary + 2);
 
           const data = extractSSEData(rawEvent);
-          if (data && data !== "[DONE]") {
-            if (data.startsWith("Error: ")) {
-              set({ error: data.slice(7) });
-            } else {
+          if (data) {
+            let event: { type: string; content?: string; message?: string } | null = null;
+            try {
+              event = JSON.parse(data);
+            } catch {
+              // Shouldn't happen post-fix (backend always sends JSON), but
+              // don't let a malformed line crash the whole stream.
+              event = null;
+            }
+
+            if (event?.type === "chunk" && event.content) {
+              const chunk = event.content;
               set((state) => ({
                 messages: state.messages.map((m) =>
                   m.id === assistantMessageId
-                    ? { ...m, content: m.content + data }
+                    ? { ...m, content: m.content + chunk }
                     : m,
                 ),
               }));
+            } else if (event?.type === "error") {
+              set({ error: event.message ?? "Something went wrong." });
             }
+            // "done" carries no data; the loop ends naturally when the
+            // response body closes.
           }
           boundary = buffer.indexOf("\n\n");
         }

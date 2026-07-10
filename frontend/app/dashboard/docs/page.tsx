@@ -1,16 +1,6 @@
 "use client";
 
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-
-import {
   Table,
   TableBody,
   TableCaption,
@@ -48,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUploader } from "@/components/file-uploader";
+import { DocumentsPagination } from "@/components/documents-pagination";
 import { useDocStore } from "@/store/docStore";
 import React, { useCallback, useEffect, useState } from "react";
 import { formatDistanceToNow, parseISO, format } from "date-fns";
@@ -96,6 +87,11 @@ const Documents = () => {
     fetchDocuments,
     loading,
     documents,
+    page,
+    totalPages,
+    total,
+    limit,
+    goToPage,
     deleteDocument,
     deletingId,
     updatingId,
@@ -112,6 +108,11 @@ const Documents = () => {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  const handlePageChange = (nextPage: number) => {
+    setSelectedIds(new Set());
+    goToPage(nextPage);
+  };
 
   const toggleRow = (id: string) => {
     setSelectedIds((prev) => {
@@ -438,30 +439,14 @@ const Documents = () => {
         </Table>
 
         {/* pagination */}
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious href="#" />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#">1</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#" isActive>
-                2
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#">3</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext href="#" />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <DocumentsPagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          loading={loading}
+          onPageChange={handlePageChange}
+        />
       </TooltipProvider>
 
       {/* Rename dialog */}
