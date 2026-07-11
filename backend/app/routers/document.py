@@ -21,7 +21,13 @@ from app.services.document_services import  process_document , background_pineco
 
 
 router = APIRouter()
-s3 = boto3.client("s3", region_name=settings.bucket_region)
+s3 = boto3.client(
+    "s3",
+    region_name=settings.bucket_region,
+    aws_access_key_id=settings.bucket_access_key,
+    aws_secret_access_key=settings.bucket_secret_key,
+    endpoint_url=settings.bucket_endpoint,
+)
 ALLOWED_EXTENSIONS = (".pdf", ".doc", ".docx")
 
 

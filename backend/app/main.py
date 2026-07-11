@@ -33,8 +33,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# settings.frontend_url covers the deployed frontend; localhost:3000 stays
-# allowed too so local dev keeps working against a deployed backend.
 allowed_origins = {settings.frontend_url, "http://localhost:3000"}
 
 app.add_middleware(
