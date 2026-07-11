@@ -76,6 +76,7 @@ const LoginPage = () => {
                 {...register("email")}
                 type="email"
                 placeholder="jane@company.com"
+                value={"jane@gmail.com"}
                 required
                 className="h-11 border-neutral-800 bg-neutral-950/50 text-neutral-100 placeholder:text-neutral-500 focus-visible:border-lime-400 focus-visible:ring-lime-400/30"
               />
@@ -94,6 +95,7 @@ const LoginPage = () => {
                   {...register("password")}
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
+                  value={"jane@123"}
                   required
                   className="h-11 border-neutral-800 bg-neutral-950/50 pr-10 text-neutral-100 placeholder:text-neutral-500 focus-visible:border-lime-400 focus-visible:ring-lime-400/30"
                 />
