@@ -77,14 +77,6 @@ export function AppSidebar() {
               <span className="text-lg font-semibold text-foreground">
                 Chatbot
               </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                aria-label="Search"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
             </div>
           </SidebarHeader>
         )}

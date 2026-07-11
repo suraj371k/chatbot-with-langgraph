@@ -134,10 +134,10 @@ async def search_in_pinecone(user_id: str, question: str, document_ids: list[str
     )
     
 
-async def delete_document_from_pinecone(user_id: str, document_id: str):
+def delete_document_from_pinecone(user_id: str, document_id: str):
     ids_to_delete = []
-    for id_batch in index.list(prefix=f"{document_id}#", namespace=user_id):
-        ids_to_delete.extend(id_batch)
+    for batch in index.list(prefix=f"{document_id}#", namespace=user_id):
+        ids_to_delete.extend(item.id for item in batch)
 
     if ids_to_delete:
         index.delete(ids=ids_to_delete, namespace=user_id)

@@ -121,7 +121,7 @@ const LoginPage = () => {
               type="submit"
               className="mt-2 h-11 w-full bg-lime-400 font-medium text-neutral-950 hover:bg-lime-300"
             >
-              {loading ? "Logging in" : "Login"}
+              {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
         </CardContent>
